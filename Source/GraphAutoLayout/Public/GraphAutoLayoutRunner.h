@@ -29,6 +29,8 @@ struct FGraphAutoLayoutRunResult
 	double ApplyMs = 0.0;
 	double CommentsMs = 0.0;
 	double FinishMs = 0.0;
+	/** Extra layout passes run so that pressing L again changes nothing. */
+	int32 NumSettlePasses = 0;
 };
 
 /** Entry points shared by the hotkey, the context menu, auto-placement and the automation tests. */

@@ -6,6 +6,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Docking/TabManager.h"
 #include "GraphAutoLayoutRunner.h"
+#include "GraphAutoLayoutSettings.h"
 #include "Misc/App.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -116,6 +117,15 @@ namespace UE::GraphAutoLayout::Perf
 				{
 					--Stage;
 					return true;
+				}
+				{
+					// -GraphAutoLayoutPerfCommentMode=0|1|2 (Ignore, ResizeToFit, KeepTogether) to compare comment handling.
+					int32 CommentMode = INDEX_NONE;
+					if (FParse::Value(FCommandLine::Get(), TEXT("GraphAutoLayoutPerfCommentMode="), CommentMode))
+					{
+						GetMutableDefault<UGraphAutoLayoutSettings>()->CommentMode = static_cast<EGraphAutoLayoutCommentMode>(CommentMode);
+						UE_LOG(LogGraphAutoLayoutPerf, Display, TEXT("PERF comment mode %d"), CommentMode);
+					}
 				}
 				if (UObject* Asset = LoadObject<UObject>(nullptr, *AssetPath))
 				{

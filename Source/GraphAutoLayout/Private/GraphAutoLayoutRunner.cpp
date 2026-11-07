@@ -544,6 +544,32 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		else
 		{
 			Layout = FGraphLayoutEngine::Run(Input);
+
+			// The engine orders each layer starting from the nodes' current positions, so pressing L again on its own
+			// result can still move things. Feed the result back in until it stops changing, so one press lands
+			// where repeated presses would. Each pass is cheap (milliseconds); the cap guards against oscillation.
+			constexpr int32 MaxSettlePasses = 4;
+			FLayoutInput Settle = Input;
+			for (int32 Pass = 1; Pass < MaxSettlePasses; ++Pass)
+			{
+				for (int32 Idx = 0; Idx < Settle.Nodes.Num(); ++Idx)
+				{
+					Settle.Nodes[Idx].OrigPos = FVector2f(FMath::RoundToFloat(Layout.Positions[Idx].X), FMath::RoundToFloat(Layout.Positions[Idx].Y));
+				}
+				FLayoutResult Next = FGraphLayoutEngine::Run(Settle);
+				bool bSettled = true;
+				for (int32 Idx = 0; bSettled && Idx < Next.Positions.Num(); ++Idx)
+				{
+					bSettled = FMath::RoundToInt(Next.Positions[Idx].X) == FMath::RoundToInt(Layout.Positions[Idx].X)
+						&& FMath::RoundToInt(Next.Positions[Idx].Y) == FMath::RoundToInt(Layout.Positions[Idx].Y);
+				}
+				Layout = MoveTemp(Next);
+				Result.NumSettlePasses = Pass;
+				if (bSettled)
+				{
+					break;
+				}
+			}
 		}
 	}
 	const double LaidOutTime = FPlatformTime::Seconds();
@@ -617,8 +643,8 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 	}
 	Transaction.Reset();
 	Result.FinishMs = (FPlatformTime::Seconds() - CommentedTime) * 1000.0;
-	GRAPHAUTOLAYOUT_DEBUG(TEXT("Timing: measure %.1f ms, layout %.1f ms, apply %.1f ms, comments %.1f ms, finish %.1f ms"),
-		Result.MeasureMs, Result.LayoutMs, Result.ApplyMs, Result.CommentsMs, Result.FinishMs);
+	GRAPHAUTOLAYOUT_DEBUG(TEXT("Timing: measure %.1f ms, layout %.1f ms (%d settle passes), apply %.1f ms, comments %.1f ms, finish %.1f ms"),
+		Result.MeasureMs, Result.LayoutMs, Result.NumSettlePasses, Result.ApplyMs, Result.CommentsMs, Result.FinishMs);
 
 	Result.bSucceeded = true;
 	Result.NumLaidOut = Selected.Num();
