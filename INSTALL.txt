@@ -1,0 +1,56 @@
+Graph Auto Layout - install notes (Unreal Engine 5.8, Win64)
+=============================================================
+
+Select nodes and press L to lay them out. Works in Blueprint, Animation Blueprint,
+Material, PCG and Niagara Scratch Pad graphs. Settings: Editor Preferences > Plugins >
+Graph Auto Layout. Key: Editor Preferences > Keyboard Shortcuts > Graph Auto Layout.
+
+
+OPTION A (recommended): engine folder, outside Perforce
+--------------------------------------------------------
+Use this if your engine is the Epic Games Launcher version, so its folder is not in
+your Perforce workspace.
+
+1. Copy the "GraphAutoLayout" folder to:
+     C:\Program Files\Epic Games\UE_5.8\Engine\Plugins\Marketplace\GraphAutoLayout\
+   (so that ...\Marketplace\GraphAutoLayout\GraphAutoLayout.uplugin exists)
+2. Restart the editor. The plugin turns itself on in every project
+   ("EnabledByDefault": true in GraphAutoLayout.uplugin), so you don't need the
+   Plugins window. Check: Editor Preferences > Plugins > Graph Auto Layout exists.
+3. Do NOT toggle it in Edit > Plugins: that writes an entry into your project's
+   .uproject, which IS in Perforce. If that happens by accident, revert the
+   .uproject in P4V - the plugin stays on anyway.
+
+
+OPTION B: project Plugins folder, hidden from Perforce
+--------------------------------------------------------
+Use this if the engine itself lives in Perforce (studio source build).
+
+1. Copy the "GraphAutoLayout" folder to:
+     <YourProject>\Plugins\GraphAutoLayout\
+   Plugins in a project's Plugins folder are enabled by default, so you don't need
+   to touch the Plugins window (which would modify the .uproject).
+2. Copy p4ignore_GraphAutoLayout.txt to C:\Users\<you>\p4ignore_GraphAutoLayout.txt
+3. In a command prompt:
+     p4 set P4IGNORE
+   - If nothing is printed:
+       p4 set P4IGNORE=C:\Users\<you>\p4ignore_GraphAutoLayout.txt
+   - If a value is printed (e.g. .p4ignore.txt), keep it and add yours after a semicolon:
+       p4 set P4IGNORE=.p4ignore.txt;C:\Users\<you>\p4ignore_GraphAutoLayout.txt
+4. Check it works, from your project folder (nothing is added, it's a preview):
+     p4 add -n Plugins\GraphAutoLayout\GraphAutoLayout.uplugin
+   Expected: a message saying the file is ignored. If instead it says it would be
+   opened for add, the ignore file isn't being used - re-check step 3.
+5. Restart P4V so it picks up the new P4IGNORE setting.
+
+
+Things that can still reveal or submit it
+-----------------------------------------
+- "Reconcile Offline Work": with the ignore file set it skips the plugin, but always
+  read the list before submitting.
+- Enabling/disabling the plugin in Edit > Plugins changes the .uproject - revert it.
+- Unreal's log (and crash reports, which include the log) lists loaded plugins.
+- Check your studio's rules about installing plugins on work machines.
+
+The DLLs only load in Unreal Engine 5.8. The Source folder is included, so a C++
+project can rebuild the plugin if needed.
