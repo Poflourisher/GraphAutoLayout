@@ -122,6 +122,10 @@ public:
 	UPROPERTY(config, EditAnywhere, Category = "Graph Types", meta = (DisplayName = "Mark Niagara Scratch Pad Changed After Layout", EditCondition = "bEnableNiagaraScratchPad"))
 	bool bMarkNiagaraScratchPadChanged = true;
 
+	/** The Niagara System Overview: the System node and its emitters are lined up in one row, in emitter-list order. */
+	UPROPERTY(config, EditAnywhere, Category = "Graph Types", meta = (DisplayName = "Enable for Niagara System Overview"))
+	bool bEnableNiagaraSystemOverview = true;
+
 	// ---- Debug ----
 
 	/** Log adapter, node/layer counts, timing and skipped nodes to LogGraphAutoLayout. Same as the GraphAutoLayout.Debug console variable. */

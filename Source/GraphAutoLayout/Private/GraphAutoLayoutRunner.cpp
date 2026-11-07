@@ -6,6 +6,7 @@
 #include "Adapters/BlueprintLayoutAdapter.h"
 #include "Adapters/MaterialLayoutAdapter.h"
 #include "Adapters/NiagaraScratchPadLayoutAdapter.h"
+#include "Adapters/NiagaraSystemOverviewLayoutAdapter.h"
 #include "Adapters/PCGLayoutAdapter.h"
 #include "EdGraph/EdGraph.h"
 #include "EdGraph/EdGraphNode.h"
@@ -31,6 +32,7 @@ namespace UE::GraphAutoLayout
 			Result.Add(MakeUnique<FBlueprintLayoutAdapter>());
 			Result.Add(MakeUnique<FMaterialLayoutAdapter>());
 			Result.Add(MakeUnique<FNiagaraScratchPadLayoutAdapter>());
+			Result.Add(MakeUnique<FNiagaraSystemOverviewLayoutAdapter>());
 			Result.Add(MakeUnique<FPCGLayoutAdapter>());
 			return Result;
 		}();
@@ -371,6 +373,7 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		return Result;
 	}
 
+	const double StartTime = FPlatformTime::Seconds();
 	const UGraphAutoLayoutSettings* Settings = GetDefault<UGraphAutoLayoutSettings>();
 	const bool bKeepTogether = Settings->CommentMode == EGraphAutoLayoutCommentMode::KeepTogether;
 	const FGraphNodeMeasurer Measurer(Panel);
@@ -524,7 +527,27 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		CommentsToFit = CollectCommentsToFit(*Graph, SelectedSet, OrigBounds, /*bPlainCommentsOnly*/ false);
 	}
 
-	const FLayoutResult Layout = FGraphLayoutEngine::Run(Input);
+	const double MeasuredTime = FPlatformTime::Seconds();
+	Result.MeasureMs = (MeasuredTime - StartTime) * 1000.0;
+	FLayoutResult Layout;
+	{
+		TArray<FVector2f> Sizes;
+		for (const FLayoutNode& LayoutNode : Input.Nodes)
+		{
+			Sizes.Add(LayoutNode.Size);
+		}
+		if (Adapter->ComputeRowLayout(Selected, Sizes, Input.Params.HorizontalSpacing, Layout.Positions))
+		{
+			// No comment-group frames from a row layout: comments are refitted around their contents instead.
+			Layout.GroupBounds.Init(FBox2f(ForceInit), Input.Groups.Num());
+		}
+		else
+		{
+			Layout = FGraphLayoutEngine::Run(Input);
+		}
+	}
+	const double LaidOutTime = FPlatformTime::Seconds();
+	Result.LayoutMs = (LaidOutTime - MeasuredTime) * 1000.0;
 	const FLayoutStats& Stats = Layout.Stats;
 	GRAPHAUTOLAYOUT_DEBUG(TEXT("Adapter %s (%s zoom): %d nodes (%d not measured live), %d edges, %d obstacles, %d comment groups (depth %d), %d comments to fit -> %d islands, %d blocks, %d layers, %d dummies, %d reversed, crossings %lld -> %lld, %.2f ms"),
 		*Adapter->GetName().ToString(), !Panel ? TEXT("no panel") : (Measurer.IsFullDetail() ? TEXT("full detail") : TEXT("low detail")),
@@ -532,7 +555,8 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		Stats.NumIslands, Stats.NumBlocks, Stats.MaxLayers, Stats.NumDummies, Stats.NumReversedEdges,
 		Stats.CrossingsBefore, Stats.CrossingsAfter, Stats.Milliseconds);
 
-	FScopedTransaction Transaction(LOCTEXT("LayoutNodesTransaction", "Auto Layout Nodes"));
+	TOptional<FScopedTransaction> Transaction;
+	Transaction.Emplace(LOCTEXT("LayoutNodesTransaction", "Auto Layout Nodes"));
 	TArray<UEdGraphNode*> MovedNodes;
 	for (int32 Idx = 0; Idx < Selected.Num(); ++Idx)
 	{
@@ -551,6 +575,8 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		Adapter->PostMoveNode(*Node);
 		MovedNodes.Add(Node);
 	}
+	const double AppliedTime = FPlatformTime::Seconds();
+	Result.ApplyMs = (AppliedTime - LaidOutTime) * 1000.0;
 
 	// Keep Together: each group comment becomes its group's frame (which the layout kept clear of every other node).
 	if (bKeepTogether)
@@ -577,15 +603,22 @@ FGraphAutoLayoutRunResult FGraphAutoLayoutRunner::LayoutNodes(UEdGraph* Graph, c
 		Result.NumCommentsResized += SetCommentRect(*Adapter, *Fit.Comment, NewX, NewY, NewWidth, NewHeight) ? 1 : 0;
 	}
 
+	const double CommentedTime = FPlatformTime::Seconds();
+	Result.CommentsMs = (CommentedTime - AppliedTime) * 1000.0;
+
 	Result.NumMoved = MovedNodes.Num();
 	if (Result.NumMoved == 0 && Result.NumCommentsResized == 0)
 	{
-		Transaction.Cancel();
+		Transaction->Cancel();
 	}
 	else
 	{
 		Adapter->PostLayout(*Graph, MovedNodes);
 	}
+	Transaction.Reset();
+	Result.FinishMs = (FPlatformTime::Seconds() - CommentedTime) * 1000.0;
+	GRAPHAUTOLAYOUT_DEBUG(TEXT("Timing: measure %.1f ms, layout %.1f ms, apply %.1f ms, comments %.1f ms, finish %.1f ms"),
+		Result.MeasureMs, Result.LayoutMs, Result.ApplyMs, Result.CommentsMs, Result.FinishMs);
 
 	Result.bSucceeded = true;
 	Result.NumLaidOut = Selected.Num();

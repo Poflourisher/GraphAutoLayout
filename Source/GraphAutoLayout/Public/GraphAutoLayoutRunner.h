@@ -22,6 +22,13 @@ struct FGraphAutoLayoutRunResult
 	/** Final bounds of every laid-out node and of every obstacle (unselected node), as used by the layout. */
 	TMap<const UEdGraphNode*, FBox2f> NodeBounds;
 	TMap<const UEdGraphNode*, FBox2f> ObstacleBounds;
+
+	/** Milliseconds spent in each step, for profiling. Finish = closing the undo transaction and notifying the editor. */
+	double MeasureMs = 0.0;
+	double LayoutMs = 0.0;
+	double ApplyMs = 0.0;
+	double CommentsMs = 0.0;
+	double FinishMs = 0.0;
 };
 
 /** Entry points shared by the hotkey, the context menu, auto-placement and the automation tests. */

@@ -48,6 +48,12 @@ namespace UE::GraphAutoLayout
 		/** Called before a comment is moved/resized, so data mirrored elsewhere can be recorded for undo. */
 		virtual void PreModifyComment(UEdGraphNode_Comment& Comment) const {}
 
+		/**
+		 * For graphs with no flow to follow (no wires), the adapter may place the nodes itself: fill OutPositions
+		 * (one per node, top-left corners) and return true to use them instead of the layered layout.
+		 */
+		virtual bool ComputeRowLayout(const TArray<UEdGraphNode*>& Nodes, const TArray<FVector2f>& Sizes, float Spacing, TArray<FVector2f>& OutPositions) const { return false; }
+
 		/** Called once inside the transaction after all nodes moved, if any did (e.g. flag the asset as changed). */
 		virtual void PostLayout(UEdGraph& Graph, const TArray<UEdGraphNode*>& MovedNodes) const {}
 	};

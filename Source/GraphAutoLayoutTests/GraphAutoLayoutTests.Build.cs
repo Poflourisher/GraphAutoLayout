@@ -23,6 +23,9 @@ public class GraphAutoLayoutTests : ModuleRules
 			"NiagaraEditor",
 			"GraphAutoLayoutCore",
 			"GraphAutoLayout",
+			"GraphEditor", // SGraphPanel, for the -GraphAutoLayoutPerf profiler
+			"Slate",
+			"SlateCore",
 		});
 	}
 }

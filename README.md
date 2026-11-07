@@ -16,6 +16,7 @@ It's editor-only: it adds nothing to your game, cooked builds or runtime.
 | **Animation Blueprint** (AnimGraph, states, transition rules, conduits) | Output Pose / State Result / Transition Result | Pose wires form the main line into the result. Variables and math feeding pins like Alpha hang below the anim node they drive. |
 | **Material** and **Material Function** | Material output node / Function Outputs | Everything flows into the output from the left. A node used by several others sits just left of the earliest one. |
 | **PCG** | The graph's Input node | Data flows right from the Input node; the Output node goes in the right-most column. |
+| **Niagara System Overview** | The System node | There are no wires here, so the System node and its emitters are lined up in one row, in the order of the system's emitter list, with their tops aligned. |
 | **Niagara Scratch Pad** | The Output node | The parameter map chain (InputMap → Map Set → Output) is the straight main line; Map Get nodes sit near what they feed. |
 
 Not supported (pressing L shows a short message instead): standalone Niagara script assets (Module / Dynamic Input / Function editors), the Animation state machine overview, and other editors such as Behavior Trees.
@@ -108,6 +109,7 @@ Layouts are saved with the asset like any normal edit. A few editors work on a c
 | L does nothing while typing | Intended: it's ignored in text fields, search boxes and the Details panel. |
 | Nodes overlap after zooming in | You laid out while zoomed far out on nodes never seen up close; press L again at normal zoom. |
 | Something looks wrong | Run `GraphAutoLayout.Debug 1` in the console, press L again, and check `LogGraphAutoLayout` lines in `Saved/Logs`. |
+| L feels slow | With `GraphAutoLayout.Debug 1` on, each press logs a `Timing:` line showing where the time went (measure, layout, apply, comments, finish). |
 
 ---
 
